@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://university-clubs.vercel.app', 'https://university-clubs.netlify.app'] 
+    ? ['https://university-clubs-ebon.vercel.app', 'https://university-clubs.vercel.app', 'https://university-clubs.netlify.app'] 
     : 'http://localhost:3000',
   credentials: true
 }));
