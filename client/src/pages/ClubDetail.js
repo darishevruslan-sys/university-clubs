@@ -90,6 +90,21 @@ const ClubDetail = () => {
             <p>{club.description}</p>
           </div>
 
+          {club.createdBy && (
+            <div className="club-organizer">
+              <span className="club-organizer-label">Организатор:</span>
+              <span className="club-organizer-name">{club.createdBy.name}</span>
+              {club.createdBy.email && (
+                <a
+                  href={`mailto:${club.createdBy.email}`}
+                  className="club-organizer-contact"
+                >
+                  {club.createdBy.email}
+                </a>
+              )}
+            </div>
+          )}
+
           <div className="club-stats">
             <div className="club-stat">
               <div className="club-stat-number">{club.members.length}</div>
