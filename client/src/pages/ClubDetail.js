@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import Chat from '../components/Chat';
+import NewsWall from '../components/NewsWall';
 import axios from 'axios';
 
 const ClubDetail = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const navigate = useNavigate();
-
+  
   const [club, setClub] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     fetchClub();
@@ -22,6 +28,39 @@ const ClubDetail = () => {
       navigate('/clubs');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const isUserMember = () => {
+    if (!user || !club) return false;
+    return club.members.some(member => member._id === user.id);
+  };
+
+  const isUserCreator = () => {
+    if (!user || !club) return false;
+    return club.createdBy._id === user.id;
+  };
+
+  const handleJoinLeave = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    setActionLoading(true);
+    setMessage('');
+
+    try {
+      const endpoint = isUserMember() ? 'leave' : 'join';
+      const response = await axios.post(`/api/clubs/${id}/${endpoint}`);
+      
+      setMessage(response.data.message);
+      // Обновляем данные клуба
+      await fetchClub();
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Произошла ошибка');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -51,7 +90,7 @@ const ClubDetail = () => {
         <div className="club-header">
           <h1 className="club-title">{club.name}</h1>
           <div className="club-category">{club.category}</div>
-
+          
           <div className="club-meta">
             <p>{club.description}</p>
           </div>
@@ -69,15 +108,51 @@ const ClubDetail = () => {
             </div>
           </div>
 
-          <div className="alert alert-info" style={{ marginTop: '24px' }}>
-            Онлайн-взаимодействия (чаты, новости и управление участниками) отключены в этой версии приложения.
+          {message && (
+            <div className={`alert ${message.includes('успешно') ? 'alert-success' : 'alert-error'}`}>
+              {message}
+            </div>
+          )}
+
+          <div style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            {user ? (
+              <>
+                <button
+                  onClick={handleJoinLeave}
+                  disabled={actionLoading}
+                  className={`btn ${isUserMember() ? 'btn-danger' : 'btn-primary'}`}
+                >
+                  {actionLoading 
+                    ? 'Загрузка...' 
+                    : isUserMember() 
+                      ? 'Покинуть клуб' 
+                      : 'Вступить в клуб'
+                  }
+                </button>
+                {isUserCreator() && (
+                  <button
+                    onClick={() => navigate(`/clubs/${id}/edit`)}
+                    className="btn btn-outline"
+                  >
+                    Редактировать клуб
+                  </button>
+                )}
+              </>
+            ) : (
+              <button
+                onClick={() => navigate('/login')}
+                className="btn btn-primary"
+              >
+                Войти для участия
+              </button>
+            )}
           </div>
         </div>
 
         {/* Members Section */}
         <div className="members-section">
           <h2>Участники клуба ({club.members.length})</h2>
-
+          
           {club.members.length === 0 ? (
             <p style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
               В клубе пока нет участников
@@ -100,6 +175,16 @@ const ClubDetail = () => {
             </div>
           )}
         </div>
+
+        {/* News Wall Section */}
+        {user && isUserMember() && (
+          <NewsWall clubId={id} />
+        )}
+
+        {/* Chat Section */}
+        {user && isUserMember() && (
+          <Chat clubId={id} />
+        )}
       </div>
     </div>
   );
