@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -24,38 +24,36 @@ function AppContent() {
   }
 
   return (
-    <Router>
-      <div className="App">
-        <Navbar />
-        <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route 
-              path="/login" 
-              element={user ? <Navigate to="/profile" /> : <Login />} 
-            />
-            <Route 
-              path="/register" 
-              element={user ? <Navigate to="/profile" /> : <Register />} 
-            />
-            <Route path="/clubs" element={<Clubs />} />
-            <Route path="/clubs/:id" element={<ClubDetail />} />
-            <Route 
-              path="/create-club" 
-              element={user ? <CreateClub /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/clubs/:id/edit" 
-              element={user ? <EditClub /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/profile" 
-              element={user ? <Profile /> : <Navigate to="/login" />} 
-            />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <div className="App">
+      <Navbar />
+      <main>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/profile" /> : <Login />}
+          />
+          <Route
+            path="/register"
+            element={user ? <Navigate to="/profile" /> : <Register />}
+          />
+          <Route path="/clubs" element={<Clubs />} />
+          <Route path="/clubs/:id" element={<ClubDetail />} />
+          <Route
+            path="/create-club"
+            element={user ? <CreateClub /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/clubs/:id/edit"
+            element={user ? <EditClub /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/profile"
+            element={user ? <Profile /> : <Navigate to="/login" />}
+          />
+        </Routes>
+      </main>
+    </div>
   );
 }
 
