@@ -1,17 +1,44 @@
-import React from 'react';
-import { Link, useParams } from 'react-router-dom';
-import clubs from '../data/clubs';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 
 const ClubDetail = () => {
   const { id } = useParams();
-  const club = clubs.find((item) => item._id === id);
+  const navigate = useNavigate();
+
+  const [club, setClub] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchClub = async () => {
+      try {
+        const response = await axios.get(`/api/clubs/${id}`);
+        setClub(response.data);
+      } catch (error) {
+        console.error('Ошибка при загрузке клуба:', error);
+        navigate('/clubs');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClub();
+  }, [id, navigate]);
+
+  if (loading) {
+    return (
+      <div className="loading">
+        <div className="spinner"></div>
+      </div>
+    );
+  }
 
   if (!club) {
     return (
       <div className="container" style={{ padding: '40px 0', textAlign: 'center' }}>
         <h2>Клуб не найден</h2>
         <Link to="/clubs" className="btn btn-primary">
-          Вернуться к списку клубов
+          Вернуться к клубам
         </Link>
       </div>
     );
@@ -20,11 +47,10 @@ const ClubDetail = () => {
   return (
     <div className="club-detail">
       <div className="container">
-        {/* Club Header */}
         <div className="club-header">
           <h1 className="club-title">{club.name}</h1>
           <div className="club-category">{club.category}</div>
-          
+
           <div className="club-meta">
             <p>{club.description}</p>
           </div>
@@ -42,8 +68,17 @@ const ClubDetail = () => {
             </div>
           </div>
 
-          <div style={{ marginTop: '24px', background: '#f8fafc', padding: '16px 20px', borderRadius: '12px', color: '#475569' }}>
-            Информация о вступлении и внутренних активностях клуба предоставляется на официальных мероприятиях или через представителей клуба.
+          <div
+            style={{
+              marginTop: '24px',
+              background: '#f8fafc',
+              padding: '16px 20px',
+              borderRadius: '12px',
+              color: '#475569',
+            }}
+          >
+            Информация о вступлении и внутренних активностях клуба предоставляется
+            на официальных мероприятиях или через представителей клуба.
           </div>
         </div>
 
