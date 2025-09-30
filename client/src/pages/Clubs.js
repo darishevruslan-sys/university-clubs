@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
 const Clubs = () => {
-  const { user } = useAuth();
   const [clubs, setClubs] = useState([]);
   const [filteredClubs, setFilteredClubs] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -57,11 +55,6 @@ const Clubs = () => {
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <h2 className="section-title" style={{ margin: 0 }}>Каталог клубов</h2>
-            {user && (
-              <Link to="/create-club" className="btn btn-primary">
-                Создать клуб
-              </Link>
-            )}
           </div>
           <div className="filter-tabs">
             {categories.map((category) => (
@@ -101,8 +94,8 @@ const Clubs = () => {
                       <div className="club-members">
                         Участников: {club.members.length}
                       </div>
-                      <Link 
-                        to={`/clubs/${club._id}`} 
+                      <Link
+                        to={`/clubs/${club._id}`}
                         className="btn btn-outline"
                       >
                         Подробнее
