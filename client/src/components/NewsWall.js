@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 
 const NewsWall = ({ clubId }) => {
   const { user } = useAuth();
@@ -330,9 +331,9 @@ const NewsItem = ({ news, currentUser, onUpdate }) => {
         {news.images && news.images.length > 0 && (
           <div className="news-images">
             {news.images.map((image, index) => (
-              <img 
+              <img
                 key={index}
-                src={`http://localhost:5000/uploads/${image}`}
+                src={`${API_BASE_URL}/uploads/${image}`}
                 alt={`Изображение ${index + 1}`}
                 className="news-image"
               />
