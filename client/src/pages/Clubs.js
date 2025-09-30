@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
 const Clubs = () => {
-  const { user } = useAuth();
   const [clubs, setClubs] = useState([]);
   const [filteredClubs, setFilteredClubs] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -20,31 +18,27 @@ const Clubs = () => {
   ];
 
   useEffect(() => {
+    const fetchClubs = async () => {
+      try {
+        const response = await axios.get('/api/clubs');
+        setClubs(response.data);
+      } catch (error) {
+        console.error('Ошибка при загрузке клубов:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchClubs();
   }, []);
 
   useEffect(() => {
-    filterClubs();
-  }, [clubs, selectedCategory]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchClubs = async () => {
-    try {
-      const response = await axios.get('/api/clubs');
-      setClubs(response.data);
-    } catch (error) {
-      console.error('Ошибка при загрузке клубов:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterClubs = () => {
     if (selectedCategory === 'all') {
       setFilteredClubs(clubs);
     } else {
-      setFilteredClubs(clubs.filter(club => club.category === selectedCategory));
+      setFilteredClubs(clubs.filter((club) => club.category === selectedCategory));
     }
-  };
+  }, [clubs, selectedCategory]);
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
@@ -52,16 +46,19 @@ const Clubs = () => {
 
   return (
     <div>
-      {/* Filter Section */}
       <section className="filter-section">
         <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-            <h2 className="section-title" style={{ margin: 0 }}>Каталог клубов</h2>
-            {user && (
-              <Link to="/create-club" className="btn btn-primary">
-                Создать клуб
-              </Link>
-            )}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '32px'
+            }}
+          >
+            <h2 className="section-title" style={{ margin: 0 }}>
+              Каталог клубов
+            </h2>
           </div>
           <div className="filter-tabs">
             {categories.map((category) => (
@@ -77,7 +74,6 @@ const Clubs = () => {
         </div>
       </section>
 
-      {/* Clubs Grid */}
       <section style={{ padding: '40px 0' }}>
         <div className="container">
           {loading ? (
@@ -98,13 +94,8 @@ const Clubs = () => {
                       <div className="club-category">{club.category}</div>
                       <h3 className="club-name">{club.name}</h3>
                       <p className="club-description">{club.description}</p>
-                      <div className="club-members">
-                        Участников: {club.members.length}
-                      </div>
-                      <Link 
-                        to={`/clubs/${club._id}`} 
-                        className="btn btn-outline"
-                      >
+                      <div className="club-members">Участников: {club.members.length}</div>
+                      <Link to={`/clubs/${club._id}`} className="btn btn-outline">
                         Подробнее
                       </Link>
                     </div>
