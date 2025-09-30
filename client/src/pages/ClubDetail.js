@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useClubs } from '../context/ClubsContext';
 
@@ -72,9 +72,9 @@ const ClubDetail = () => {
     return (
       <div className="container" style={{ padding: '40px 0', textAlign: 'center' }}>
         <h2>Клуб не найден</h2>
-        <button onClick={() => navigate('/clubs')} className="btn btn-primary">
+        <Link to="/clubs" className="btn btn-primary">
           Вернуться к клубам
-        </button>
+        </Link>
       </div>
     );
   }
