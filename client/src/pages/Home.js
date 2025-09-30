@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import ClubInterestForm from '../components/ClubInterestForm';
 
 const Home = () => {
   const [popularClubs, setPopularClubs] = useState([]);
@@ -37,6 +38,8 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      <ClubInterestForm />
 
       <section className="popular-clubs">
         <div className="container">
