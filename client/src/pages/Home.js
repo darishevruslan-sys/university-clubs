@@ -1,28 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import clubs from '../data/clubs';
 
 const Home = () => {
-  const { user } = useAuth();
-  const [popularClubs, setPopularClubs] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchPopularClubs();
-  }, []);
-
-  const fetchPopularClubs = async () => {
-    try {
-      const response = await axios.get('/api/clubs');
-      // Берем первые 6 клубов как популярные
-      setPopularClubs(response.data.slice(0, 6));
-    } catch (error) {
-      console.error('Ошибка при загрузке клубов:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const popularClubs = clubs.slice(0, 6);
 
   return (
     <div>
@@ -35,20 +16,12 @@ const Home = () => {
             и находите новых друзей в университете
           </p>
           <div className="hero-actions">
-            {user ? (
-              <Link to="/clubs" className="btn btn-primary btn-lg">
-                Посмотреть клубы
-              </Link>
-            ) : (
-              <>
-                <Link to="/register" className="btn btn-primary btn-lg">
-                  Зарегистрироваться
-                </Link>
-                <Link to="/login" className="btn btn-outline btn-lg">
-                  Войти
-                </Link>
-              </>
-            )}
+            <Link to="/clubs" className="btn btn-primary btn-lg">
+              Посмотреть клубы
+            </Link>
+            <Link to="/register" className="btn btn-outline btn-lg">
+              Регистрация
+            </Link>
           </div>
         </div>
       </section>
@@ -58,30 +31,24 @@ const Home = () => {
         <div className="container">
           <h2 className="section-title">Популярные клубы</h2>
           
-          {loading ? (
-            <div className="loading">
-              <div className="spinner"></div>
-            </div>
-          ) : (
-            <div className="clubs-grid">
-              {popularClubs.map((club) => (
-                <div key={club._id} className="club-card">
-                  <div className="club-category">{club.category}</div>
-                  <h3 className="club-name">{club.name}</h3>
-                  <p className="club-description">{club.description}</p>
-                  <div className="club-members">
-                    Участников: {club.members.length}
-                  </div>
-                  <Link 
-                    to={`/clubs/${club._id}`} 
-                    className="btn btn-outline"
-                  >
-                    Подробнее
-                  </Link>
+          <div className="clubs-grid">
+            {popularClubs.map((club) => (
+              <div key={club._id} className="club-card">
+                <div className="club-category">{club.category}</div>
+                <h3 className="club-name">{club.name}</h3>
+                <p className="club-description">{club.description}</p>
+                <div className="club-members">
+                  Участников: {club.members.length}
                 </div>
-              ))}
-            </div>
-          )}
+                <Link
+                  to={`/clubs/${club._id}`}
+                  className="btn btn-outline"
+                >
+                  Подробнее
+                </Link>
+              </div>
+            ))}
+          </div>
           
           <div style={{ textAlign: 'center', marginTop: '40px' }}>
             <Link to="/clubs" className="btn btn-primary">
