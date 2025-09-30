@@ -1,49 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { useClubs } from '../context/ClubsContext';
 
 const Profile = () => {
-  const { user, fetchUserProfile } = useAuth();
-  const [userClubs, setUserClubs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { clubs, initialized, leaveClub } = useClubs();
   const [actionLoading, setActionLoading] = useState({});
 
-  useEffect(() => {
-    fetchUserClubs();
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchUserClubs = async () => {
-    if (!user) return;
-    
-    try {
-      const response = await axios.get('/api/profile');
-      setUserClubs(response.data.user.joinedClubs || []);
-    } catch (error) {
-      console.error('Ошибка при загрузке клубов пользователя:', error);
-    } finally {
-      setLoading(false);
+  const userClubs = useMemo(() => {
+    if (!user) {
+      return [];
     }
-  };
 
-  const handleLeaveClub = async (clubId) => {
-    setActionLoading(prev => ({ ...prev, [clubId]: true }));
+    return clubs.filter((club) => club.members.some((member) => member._id === user.id));
+  }, [clubs, user]);
 
-    try {
-      await axios.post(`/api/clubs/${clubId}/leave`);
-      // Обновляем список клубов пользователя
-      await fetchUserProfile();
-      await fetchUserClubs();
-    } catch (error) {
-      console.error('Ошибка при выходе из клуба:', error);
-    } finally {
-      setActionLoading(prev => ({ ...prev, [clubId]: false }));
-    }
+  const handleLeaveClub = (clubId) => {
+    setActionLoading((prev) => ({ ...prev, [clubId]: true }));
+
+    setTimeout(() => {
+      leaveClub(clubId, user.id);
+      setActionLoading((prev) => ({ ...prev, [clubId]: false }));
+    }, 300);
   };
 
   const isUserCreator = (club) => {
     if (!user || !club) return false;
-    return club.createdBy._id === user.id;
+    return club.createdBy?._id === user.id;
   };
 
   if (!user) {
@@ -54,10 +38,17 @@ const Profile = () => {
     );
   }
 
+  if (!initialized) {
+    return (
+      <div className="loading">
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '40px 0' }}>
       <div className="container">
-        {/* Profile Header */}
         <div className="profile-header">
           <div className="profile-avatar">
             {user.name.charAt(0).toUpperCase()}
@@ -66,15 +57,10 @@ const Profile = () => {
           <p className="profile-email">{user.email}</p>
         </div>
 
-        {/* User Clubs */}
         <div className="user-clubs">
           <h2>Мои клубы ({userClubs.length})</h2>
-          
-          {loading ? (
-            <div className="loading">
-              <div className="spinner"></div>
-            </div>
-          ) : userClubs.length === 0 ? (
+
+          {userClubs.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <p style={{ color: '#64748b', marginBottom: '24px' }}>
                 Вы пока не состоите ни в одном клубе
@@ -94,15 +80,15 @@ const Profile = () => {
                     Участников: {club.members.length}
                   </div>
                   <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
-                    <Link 
-                      to={`/clubs/${club._id}`} 
+                    <Link
+                      to={`/clubs/${club._id}`}
                       className="btn btn-outline"
                     >
                       Подробнее
                     </Link>
                     {isUserCreator(club) && (
-                      <Link 
-                        to={`/clubs/${club._id}/edit`} 
+                      <Link
+                        to={`/clubs/${club._id}/edit`}
                         className="btn btn-outline btn-sm"
                       >
                         Редактировать

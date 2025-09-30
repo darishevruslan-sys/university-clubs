@@ -1,70 +1,66 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Chat from '../components/Chat';
-import NewsWall from '../components/NewsWall';
-import axios from 'axios';
+import { useClubs } from '../context/ClubsContext';
 
 const ClubDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
-  const [club, setClub] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { clubs, initialized, joinClub, leaveClub } = useClubs();
+
+  const club = useMemo(() => clubs.find((item) => item._id === id) || null, [clubs, id]);
+
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    fetchClub();
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+    setMessage('');
+    setActionLoading(false);
+  }, [id]);
 
-  const fetchClub = async () => {
-    try {
-      const response = await axios.get(`/api/clubs/${id}`);
-      setClub(response.data);
-    } catch (error) {
-      console.error('Ошибка при загрузке клуба:', error);
-      navigate('/clubs');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (initialized && !club) {
+      navigate('/clubs', { replace: true });
     }
-  };
+  }, [initialized, club, navigate]);
 
   const isUserMember = () => {
     if (!user || !club) return false;
-    return club.members.some(member => member._id === user.id);
+    return club.members.some((member) => member._id === user.id);
   };
 
   const isUserCreator = () => {
     if (!user || !club) return false;
-    return club.createdBy._id === user.id;
+    return club.createdBy?._id === user.id;
   };
 
-  const handleJoinLeave = async () => {
-    if (!user) {
+  const handleJoinLeave = () => {
+    if (!user || !club) {
       navigate('/login');
       return;
     }
 
     setActionLoading(true);
-    setMessage('');
 
-    try {
-      const endpoint = isUserMember() ? 'leave' : 'join';
-      const response = await axios.post(`/api/clubs/${id}/${endpoint}`);
-      
-      setMessage(response.data.message);
-      // Обновляем данные клуба
-      await fetchClub();
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Произошла ошибка');
-    } finally {
-      setActionLoading(false);
+    if (isUserMember()) {
+      leaveClub(club._id, user.id);
+      setMessage('Вы вышли из клуба. Возвращайтесь, когда захотите!');
+    } else {
+      joinClub(club._id, {
+        _id: user.id,
+        name: user.name,
+        email: user.email,
+      });
+      setMessage('Добро пожаловать! Вы присоединились к клубу.');
     }
+
+    setTimeout(() => {
+      setActionLoading(false);
+    }, 300);
   };
 
-  if (loading) {
+  if (!initialized) {
     return (
       <div className="loading">
         <div className="spinner"></div>
@@ -86,11 +82,10 @@ const ClubDetail = () => {
   return (
     <div className="club-detail">
       <div className="container">
-        {/* Club Header */}
         <div className="club-header">
           <h1 className="club-title">{club.name}</h1>
           <div className="club-category">{club.category}</div>
-          
+
           <div className="club-meta">
             <p>{club.description}</p>
           </div>
@@ -109,7 +104,7 @@ const ClubDetail = () => {
           </div>
 
           {message && (
-            <div className={`alert ${message.includes('успешно') ? 'alert-success' : 'alert-error'}`}>
+            <div className={`alert ${message.includes('Добро пожаловать') ? 'alert-success' : 'alert-info'}`}>
               {message}
             </div>
           )}
@@ -122,10 +117,10 @@ const ClubDetail = () => {
                   disabled={actionLoading}
                   className={`btn ${isUserMember() ? 'btn-danger' : 'btn-primary'}`}
                 >
-                  {actionLoading 
-                    ? 'Загрузка...' 
-                    : isUserMember() 
-                      ? 'Покинуть клуб' 
+                  {actionLoading
+                    ? 'Загрузка...'
+                    : isUserMember()
+                      ? 'Покинуть клуб'
                       : 'Вступить в клуб'
                   }
                 </button>
@@ -149,10 +144,9 @@ const ClubDetail = () => {
           </div>
         </div>
 
-        {/* Members Section */}
         <div className="members-section">
           <h2>Участники клуба ({club.members.length})</h2>
-          
+
           {club.members.length === 0 ? (
             <p style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
               В клубе пока нет участников
@@ -176,14 +170,56 @@ const ClubDetail = () => {
           )}
         </div>
 
-        {/* News Wall Section */}
-        {user && isUserMember() && (
-          <NewsWall clubId={id} />
+        {club.activities?.length > 0 && (
+          <div className="club-info-section">
+            <h2>Чем занимается клуб</h2>
+            <div className="club-info-grid">
+              {club.activities.map((activity) => (
+                <div key={activity.id} className="club-info-card">
+                  <h3>{activity.title}</h3>
+                  <p>{activity.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
-        {/* Chat Section */}
-        {user && isUserMember() && (
-          <Chat clubId={id} />
+        {club.upcomingEvents?.length > 0 && (
+          <div className="club-info-section">
+            <h2>Ближайшие события</h2>
+            <div className="club-events-list">
+              {club.upcomingEvents.map((event) => (
+                <div key={event.id} className="club-event">
+                  <div>
+                    <div className="club-event-title">{event.title}</div>
+                    <div className="club-event-meta">
+                      {new Date(event.date).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </div>
+                  </div>
+                  <div className="club-event-location">{event.location}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {club.resources?.length > 0 && (
+          <div className="club-info-section">
+            <h2>Полезные ссылки</h2>
+            <ul className="club-resources">
+              {club.resources.map((resource) => (
+                <li key={resource.id}>
+                  <a href={resource.url} target="_blank" rel="noreferrer">
+                    {resource.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
     </div>

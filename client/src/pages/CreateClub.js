@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { useClubs } from '../context/ClubsContext';
 
 const CreateClub = () => {
   const { user } = useAuth();
+  const { addClub, initialized } = useClubs();
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -17,7 +18,7 @@ const CreateClub = () => {
 
   const categories = [
     'Спорт',
-    'Культура', 
+    'Культура',
     'IT',
     'Творчество',
     'Развлечения'
@@ -33,9 +34,14 @@ const CreateClub = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!initialized) {
+      setError('Данные клубов ещё загружаются. Попробуйте чуть позже.');
+      return;
+    }
+
     setLoading(true);
 
-    // Валидация
     if (!formData.name.trim()) {
       setError('Название клуба обязательно');
       setLoading(false);
@@ -55,12 +61,28 @@ const CreateClub = () => {
     }
 
     try {
-      const response = await axios.post('/api/clubs', formData);
-      setError('');
-      // Перенаправляем на страницу созданного клуба
-      navigate(`/clubs/${response.data.club._id}`);
-    } catch (error) {
-      setError(error.response?.data?.message || 'Ошибка при создании клуба');
+      const newClub = addClub({
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+        createdBy: {
+          _id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+        members: [
+          {
+            _id: user.id,
+            name: user.name,
+            email: user.email,
+          }
+        ],
+      });
+
+      navigate(`/clubs/${newClub._id}`);
+    } catch (creationError) {
+      console.error('Ошибка при создании клуба:', creationError);
+      setError('Не удалось создать клуб. Попробуйте снова.');
     } finally {
       setLoading(false);
     }
@@ -83,7 +105,7 @@ const CreateClub = () => {
       <div className="container">
         <div className="auth-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
           <h1 className="auth-title">Создать новый клуб</h1>
-          
+
           {error && (
             <div className="alert alert-error">
               {error}
@@ -145,21 +167,20 @@ const CreateClub = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="btn btn-primary"
                 disabled={loading}
                 style={{ flex: 1 }}
               >
                 {loading ? 'Создание...' : 'Создать клуб'}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => navigate('/clubs')}
                 className="btn btn-secondary"
                 style={{ flex: 1 }}
               >
-
                 Отмена
               </button>
             </div>

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { useClubs } from '../context/ClubsContext';
 
 const EditClub = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+  const { initialized, getClubById, updateClub } = useClubs();
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -15,46 +16,43 @@ const EditClub = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [clubLoading, setClubLoading] = useState(true);
-  const [club, setClub] = useState(null);
+  const [ready, setReady] = useState(false);
+
+  const club = useMemo(() => getClubById(id), [getClubById, id]);
 
   const categories = [
     'Спорт',
-    'Культура', 
+    'Культура',
     'IT',
     'Творчество',
     'Развлечения'
   ];
 
   useEffect(() => {
-    fetchClub();
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchClub = async () => {
-    try {
-      const response = await axios.get(`/api/clubs/${id}`);
-      const clubData = response.data;
-      
-      // Check if user is the creator
-      if (clubData.createdBy._id !== user?.id) {
-        setError('У вас нет прав для редактирования этого клуба');
-        setClubLoading(false);
-        return;
-      }
-
-      setClub(clubData);
-      setFormData({
-        name: clubData.name,
-        description: clubData.description,
-        category: clubData.category
-      });
-    } catch (error) {
-      setError('Ошибка при загрузке клуба');
-      console.error('Ошибка при загрузке клуба:', error);
-    } finally {
-      setClubLoading(false);
+    if (!initialized) {
+      return;
     }
-  };
+
+    if (!club) {
+      setError('Клуб не найден');
+      setReady(true);
+      return;
+    }
+
+    if (club.createdBy?._id !== user?.id) {
+      setError('У вас нет прав для редактирования этого клуба');
+      setReady(true);
+      return;
+    }
+
+    setFormData({
+      name: club.name,
+      description: club.description,
+      category: club.category
+    });
+    setError('');
+    setReady(true);
+  }, [initialized, club, user]);
 
   const handleChange = (e) => {
     setFormData({
@@ -68,7 +66,6 @@ const EditClub = () => {
     setError('');
     setLoading(true);
 
-    // Валидация
     if (!formData.name.trim()) {
       setError('Название клуба обязательно');
       setLoading(false);
@@ -88,12 +85,22 @@ const EditClub = () => {
     }
 
     try {
-      await axios.put(`/api/clubs/${id}`, formData);
-      setError('');
-      // Перенаправляем на страницу клуба
+      const updated = updateClub(id, {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+      });
+
+      if (!updated) {
+        setError('Не удалось обновить клуб. Попробуйте снова.');
+        setLoading(false);
+        return;
+      }
+
       navigate(`/clubs/${id}`);
-    } catch (error) {
-      setError(error.response?.data?.message || 'Ошибка при обновлении клуба');
+    } catch (updateError) {
+      console.error('Ошибка при обновлении клуба:', updateError);
+      setError('Не удалось обновить клуб. Попробуйте снова.');
     } finally {
       setLoading(false);
     }
@@ -111,7 +118,7 @@ const EditClub = () => {
     );
   }
 
-  if (clubLoading) {
+  if (!initialized || !ready) {
     return (
       <div className="loading">
         <div className="spinner"></div>
@@ -119,7 +126,7 @@ const EditClub = () => {
     );
   }
 
-  if (error && !club) {
+  if (error && club?.createdBy?._id !== user.id) {
     return (
       <div className="container" style={{ padding: '40px 0', textAlign: 'center' }}>
         <div className="alert alert-error" style={{ marginBottom: '24px' }}>
@@ -137,7 +144,7 @@ const EditClub = () => {
       <div className="container">
         <div className="auth-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
           <h1 className="auth-title">Редактировать клуб</h1>
-          
+
           {error && (
             <div className="alert alert-error">
               {error}
@@ -199,16 +206,16 @@ const EditClub = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="btn btn-primary"
                 disabled={loading}
                 style={{ flex: 1 }}
               >
                 {loading ? 'Сохранение...' : 'Сохранить изменения'}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => navigate(`/clubs/${id}`)}
                 className="btn btn-secondary"
                 style={{ flex: 1 }}

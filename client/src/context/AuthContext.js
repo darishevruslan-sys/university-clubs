@@ -1,8 +1,84 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
-import API_BASE_URL from '../config/api';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+
+const USERS_STORAGE_KEY = 'university-clubs-users';
+const CURRENT_USER_STORAGE_KEY = 'university-clubs-current-user';
 
 const AuthContext = createContext();
+
+const safeParse = (value, fallback) => {
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    console.warn('Не удалось преобразовать данные из localStorage:', error);
+    return fallback;
+  }
+};
+
+const loadUsers = () => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const stored = window.localStorage.getItem(USERS_STORAGE_KEY);
+  if (!stored) {
+    return [];
+  }
+
+  const parsed = safeParse(stored, []);
+  return Array.isArray(parsed) ? parsed : [];
+};
+
+const saveUsers = (users) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  } catch (error) {
+    console.warn('Не удалось сохранить пользователей в localStorage:', error);
+  }
+};
+
+const loadCurrentUser = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(CURRENT_USER_STORAGE_KEY);
+  if (!stored) {
+    return null;
+  }
+
+  const parsed = safeParse(stored, null);
+  if (parsed && parsed.id && parsed.email) {
+    return parsed;
+  }
+
+  return null;
+};
+
+const persistCurrentUser = (user) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (user) {
+    try {
+      window.localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+    } catch (error) {
+      console.warn('Не удалось сохранить текущего пользователя в localStorage:', error);
+    }
+  } else {
+    window.localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+  }
+};
+
+const sanitizeUser = (user) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+});
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -13,82 +89,80 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(loadCurrentUser);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      fetchUserProfile();
-    } else {
-      setLoading(false);
-    }
+    setLoading(false);
   }, []);
 
-  const fetchUserProfile = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/profile`);
-      setUser(response.data.user);
-    } catch (error) {
-      console.error('Ошибка при получении профиля:', error);
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
-    } finally {
-      setLoading(false);
-    }
-  };
+  const login = useCallback(async (email, password) => {
+    const users = loadUsers();
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = users.find((storedUser) => storedUser.email === normalizedEmail && storedUser.password === password);
 
-  const login = async (email, password) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/login`, { email, password });
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-      
-      return { success: true };
-    } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Ошибка при входе' 
+    if (!existingUser) {
+      return {
+        success: false,
+        message: 'Неверный email или пароль',
       };
     }
-  };
 
-  const register = async (name, email, password) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/register`, { name, email, password });
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-      
-      return { success: true };
-    } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Ошибка при регистрации' 
+    const sanitized = sanitizeUser(existingUser);
+    setUser(sanitized);
+    persistCurrentUser(sanitized);
+
+    return { success: true };
+  }, []);
+
+  const register = useCallback(async (name, email, password) => {
+    const users = loadUsers();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existingUser = users.find((storedUser) => storedUser.email === normalizedEmail);
+    if (existingUser) {
+      return {
+        success: false,
+        message: 'Пользователь с таким email уже зарегистрирован',
       };
     }
-  };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
+    const newUser = {
+      id: `user-${Date.now()}`,
+      name: name.trim(),
+      email: normalizedEmail,
+      password,
+    };
+
+    const updatedUsers = [...users, newUser];
+    saveUsers(updatedUsers);
+
+    const sanitized = sanitizeUser(newUser);
+    setUser(sanitized);
+    persistCurrentUser(sanitized);
+
+    return { success: true };
+  }, []);
+
+  const logout = useCallback(() => {
     setUser(null);
-  };
+    persistCurrentUser(null);
+  }, []);
 
-  const value = {
+  const fetchUserProfile = useCallback(async () => {
+    const current = loadCurrentUser();
+    setUser(current);
+    return current;
+  }, []);
+
+  const value = useMemo(() => ({
     user,
     loading,
     login,
     register,
     logout,
-    fetchUserProfile
-  };
+    fetchUserProfile,
+  }), [user, loading, login, register, logout, fetchUserProfile]);
 
   return (
     <AuthContext.Provider value={value}>

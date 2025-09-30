@@ -10,6 +10,7 @@ import CreateClub from './pages/CreateClub';
 import EditClub from './pages/EditClub';
 import Profile from './pages/Profile';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ClubsProvider } from './context/ClubsContext';
 import './App.css';
 
 function AppContent() {
@@ -60,7 +61,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ClubsProvider>
+        <AppContent />
+      </ClubsProvider>
     </AuthProvider>
   );
 }
